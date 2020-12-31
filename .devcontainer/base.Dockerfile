@@ -31,6 +31,10 @@ COPY library-scripts/* setup-user.sh /tmp/scripts/
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     # Restore man command
     && yes | unminimize 2>&1 \ 
+    # Install the latest stable git from the official PPA
+    && add-apt-repository ppa:git-core/ppa \
+    && apt-get update \
+    && apt-get install -y git \
     # Run common script and setup user
     && bash /tmp/scripts/common-debian.sh "true" "${USERNAME}" "${USER_UID}" "${USER_GID}" "true" "true" \
     && bash /tmp/scripts/setup-user.sh "${USERNAME}" "${PATH}" \
@@ -102,7 +106,7 @@ RUN bash /tmp/scripts/rust-debian.sh "${CARGO_HOME}" "${RUSTUP_HOME}" "${USERNAM
 
 
 # Install moby engine and its dependencies
-# Eaables "docker-in-docker" behavior
+# Enables "docker-in-docker" behavior
 RUN apt-get update && apt-get install -y \
     apt-transport-https \
     ca-certificates \
