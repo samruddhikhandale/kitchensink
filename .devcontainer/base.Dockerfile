@@ -40,6 +40,9 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install build-essential cmake cppcheck valgrind clang lldb llvm gdb \
     # Install tools and shells not in common script
     && apt-get install -yq vim vim-doc xtail software-properties-common libsecret-1-dev \
+    # Install additional tools (useful for 'puppeteer' project)
+    && apt-get install -y --no-install-recommends libnss3 libnspr4 libatk-bridge2.0-0 libatk1.0-0 libx11-6 libpangocairo-1.0-0 \
+                                                  libx11-xcb1 libcups2 libxcomposite1 libxdamage1 libxfixes3 libpango-1.0-0 libgbm1 libgtk-3-0 \
     && bash /tmp/scripts/sshd-debian.sh \
     && bash /tmp/scripts/git-lfs-debian.sh \
     && bash /tmp/scripts/github-debian.sh \
@@ -100,7 +103,8 @@ RUN bash /tmp/scripts/rust-debian.sh "${CARGO_HOME}" "${RUSTUP_HOME}" "${USERNAM
     && bash /tmp/scripts/go-debian.sh "latest" "${GOROOT}" "${GOPATH}" "${USERNAME}" \
     && apt-get clean -y && rm -rf /tmp/scripts
 
-VOLUME /var/lib/docker
+# Mount for docker-in-docker 
+VOLUME [ "/var/lib/docker" ]
 
 # Fire Docker/Moby script if needed along with Oryx's benv
 ENTRYPOINT [ "/usr/local/share/docker-init.sh", "/usr/local/share/ssh-init.sh", "benv" ]
