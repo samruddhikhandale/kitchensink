@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/oryx/build:vso-focal-20201204.1 as kitchensink
+FROM mcr.microsoft.com/oryx/build:vso-focal-20210308.3 as kitchensink
 
 ARG USERNAME=codespace
 ARG USER_UID=1000
@@ -37,12 +37,12 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     # Change owner of opt contents since Oryx can dynamically install and will run as "codespace"
     && chown codespace /opt/* \
     # Verify expected build and debug tools are present
-    && apt-get -y install build-essential cmake cppcheck valgrind clang lldb llvm gdb \
+    && apt-get -y install build-essential cmake cppcheck valgrind clang lldb llvm gdb python3-dev \
     # Install tools and shells not in common script
     && apt-get install -yq vim vim-doc xtail software-properties-common libsecret-1-dev \
     # Install additional tools (useful for 'puppeteer' project)
     && apt-get install -y --no-install-recommends libnss3 libnspr4 libatk-bridge2.0-0 libatk1.0-0 libx11-6 libpangocairo-1.0-0 \
-                                                  libx11-xcb1 libcups2 libxcomposite1 libxdamage1 libxfixes3 libpango-1.0-0 libgbm1 libgtk-3-0 \
+    libx11-xcb1 libcups2 libxcomposite1 libxdamage1 libxfixes3 libpango-1.0-0 libgbm1 libgtk-3-0 \
     && bash /tmp/scripts/sshd-debian.sh \
     && bash /tmp/scripts/git-lfs-debian.sh \
     && bash /tmp/scripts/github-debian.sh \
@@ -64,8 +64,9 @@ RUN bash /tmp/scripts/python-debian.sh "none" "/opt/python/latest" "${PIPX_HOME}
     && yes | pecl install xdebug \
     && export PHP_LOCATION=$(dirname $(dirname $(which php))) \
     && echo "zend_extension=$(find ${PHP_LOCATION}/lib/php/extensions/ -name xdebug.so)" > ${PHP_LOCATION}/ini/conf.d/xdebug.ini \
-    && echo "xdebug.remote_enable=on" >> ${PHP_LOCATION}/ini/conf.d/xdebug.ini \
-    && echo "xdebug.remote_autostart=on" >>  ${PHP_LOCATION}/ini/conf.d/xdebug.ini \
+    && echo "xdebug.mode = debug" >> ${PHP_LOCATION}/ini/conf.d/xdebug.ini \
+    && echo "xdebug.start_with_request = yes" >> ${PHP_LOCATION}/ini/conf.d/xdebug.ini \
+    && echo "xdebug.client_port = 9000" >> ${PHP_LOCATION}/ini/conf.d/xdebug.ini \
     && rm -rf /tmp/pear \
     && ln -s $(which composer.phar) /usr/local/bin/composer \
     && apt-get clean -y
@@ -94,9 +95,9 @@ RUN bash /tmp/scripts/node-debian.sh "${NVM_DIR}" "none" "${USERNAME}" \
 RUN bash /tmp/scripts/gradle-debian.sh "latest" "${SDKMAN_DIR}" "${USERNAME}" "true" \
     && bash /tmp/scripts/java-debian.sh "8.0.275.hs-adpt" "${SDKMAN_DIR}" "${USERNAME}" "true" \
     && su ${USERNAME} -c ". ${SDKMAN_DIR}/bin/sdkman-init.sh \
-        && sdk install java opt-java-11 /opt/java/11.0 \
-        && sdk install java opt-java-lts /opt/java/lts \
-        && sdk default java opt-java-lts"
+    && sdk install java opt-java-11 /opt/java/11.0 \
+    && sdk install java opt-java-lts /opt/java/lts \
+    && sdk default java opt-java-lts"
 
 # Install Rust, Go, remove scripts now that we're done with them
 RUN bash /tmp/scripts/rust-debian.sh "${CARGO_HOME}" "${RUSTUP_HOME}" "${USERNAME}" "true" \
@@ -113,9 +114,9 @@ CMD [ "sleep", "infinity" ]
 # [Optional] Install debugger for development of Codespaces - Not in resulting image by default
 ARG DeveloperBuild
 RUN if [ -z $DeveloperBuild ]; then \
-        echo "not including debugger" ; \
+    echo "not including debugger" ; \
     else \
-        curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg ; \
+    curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg ; \
     fi
 
 USER ${USERNAME}

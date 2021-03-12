@@ -5,6 +5,7 @@
 #-------------------------------------------------------------------------------------------------------------
 #
 # Docs: https://github.com/microsoft/vscode-dev-containers/blob/master/script-library/docs/sshd.md
+# Maintainer: The VS Code and Codespaces Teams
 #
 # Syntax: ./sshd-debian.sh [SSH Port (don't use 22)] [non-root user] [start sshd now flag] [new password for user]
 #
@@ -92,9 +93,9 @@ tee /usr/local/share/ssh-init.sh > /dev/null \
 set -e 
 
 if [ "\$(id -u)" -ne 0 ]; then
-    sudo /etc/init.d/ssh start
+    sudo /etc/init.d/ssh start > /tmp/sshd.log 2>&1
 else
-    /etc/init.d/ssh start
+    /etc/init.d/ssh start > /tmp/sshd.log 2>&1
 fi
 
 set +e

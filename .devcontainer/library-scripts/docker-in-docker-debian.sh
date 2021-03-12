@@ -5,6 +5,7 @@
 #-------------------------------------------------------------------------------------------------------------
 #
 # Docs: https://github.com/microsoft/vscode-dev-containers/blob/master/script-library/docs/docker-in-docker.md
+# Maintainer: The VS Code and Codespaces Teams
 #
 # Syntax: ./docker-in-docker-debian.sh [enable non-root docker access flag] [non-root user] [use moby]
 
@@ -106,7 +107,7 @@ if [ "${ENABLE_NONROOT_DOCKER}" = "true" ]; then
 fi
 
 tee /usr/local/share/docker-init.sh > /dev/null \
-<< EOF 
+<< 'EOF' 
 #!/usr/bin/env bash
 #-------------------------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
@@ -115,17 +116,17 @@ tee /usr/local/share/docker-init.sh > /dev/null \
 
 sudoIf()
 {
-    if [ "\$(id -u)" -ne 0 ]; then
-        sudo "\$@"
+    if [ "$(id -u)" -ne 0 ]; then
+        sudo "$@"
     else
-        "\$@"
+        "$@"
     fi
 }
 
 # explicitly remove dockerd and containerd PID file to ensure that it can start properly if it was stopped uncleanly
 # ie: docker kill <ID>
-find /run /var/run -iname 'docker*.pid' -delete || :
-find /run /var/run -iname 'container*.pid' -delete || :
+sudoIf find /run /var/run -iname 'docker*.pid' -delete || :
+sudoIf find /run /var/run -iname 'container*.pid' -delete || :
 
 set -e
 
@@ -158,14 +159,27 @@ if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
 fi
 ## Dind wrapper over.
 
+# Handle DNS
+set +e
+cat /etc/resolv.conf | grep -i 'internal.cloudapp.net'
+if [ $? -eq 0 ]
+then
+  echo "Setting dockerd Azure DNS."
+  CUSTOMDNS="--dns 168.63.129.16"
+else
+  echo "Not setting dockerd DNS manually."
+  CUSTOMDNS=""
+fi
+set -e
+
 # Start docker/moby engine
-( sudoIf dockerd > /tmp/dockerd.log 2>&1 ) &
+( sudoIf dockerd $CUSTOMDNS > /tmp/dockerd.log 2>&1 ) &
 
 set +e
 
 # Execute whatever commands were passed in (if any). This allows us 
 # to set this script to ENTRYPOINT while still executing the default CMD.
-exec "\$@"
+exec "$@"
 EOF
 
 chmod +x /usr/local/share/docker-init.sh
