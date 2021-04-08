@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/oryx/build:vso-focal-20210308.3 as kitchensink
+FROM mcr.microsoft.com/oryx/build:vso-focal-exp-20210402.1 as kitchensink
 
 ARG USERNAME=codespace
 ARG USER_UID=1000
@@ -19,6 +19,7 @@ ENV SHELL=/bin/bash \
     PIPX_HOME="/usr/local/py-utils" \
     PIPX_BIN_DIR="/usr/local/py-utils/bin" \
     RVM_PATH="/usr/local/rvm" \
+    RAILS_DEVELOPMENT_HOSTS=".githubpreview.dev" \ 
     GOROOT="/usr/local/go" \
     GOPATH="/go" \
     CARGO_HOME="/usr/local/cargo" \
@@ -27,12 +28,12 @@ ENV SHELL=/bin/bash \
 ENV PATH="${ORIGINAL_PATH}:${NVM_DIR}/current/bin:${NPM_GLOBAL}/bin:${DOTNET_ROOT}:${DOTNET_ROOT}/tools:${SDKMAN_DIR}/bin:${SDKMAN_DIR}/candidates/gradle/current/bin:${SDKMAN_DIR}/java/current/bin:/opt/maven/lts:${CARGO_HOME}/bin:${GOROOT}/bin:${GOPATH}/bin:${PIPX_BIN_DIR}:/opt/conda/condabin:${ORYX_PATHS}"
 
 # Install needed utilities and setup non-root user. Use a separate RUN statement to add your own dependencies.
-COPY library-scripts/* setup-user.sh /tmp/scripts/
+COPY library-scripts/* setup-user.sh first-run-notice.txt /tmp/scripts/
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     # Restore man command
     && yes | unminimize 2>&1 \ 
     # Run common script and setup user
-    && bash /tmp/scripts/common-debian.sh "true" "${USERNAME}" "${USER_UID}" "${USER_GID}" "true" "true" \
+    && bash /tmp/scripts/common-debian.sh "true" "${USERNAME}" "${USER_UID}" "${USER_GID}" "true" "true" "true" \
     && bash /tmp/scripts/setup-user.sh "${USERNAME}" "${PATH}" \
     # Change owner of opt contents since Oryx can dynamically install and will run as "codespace"
     && chown codespace /opt/* \
@@ -53,7 +54,10 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     # Build latest git from source
     && bash /tmp/scripts/git-from-src-debian.sh "latest" \
     # Clean up
-    && apt-get autoremove -y && apt-get clean -y
+    && apt-get autoremove -y && apt-get clean -y \
+    # Move first run notice to right spot
+    && mkdir -p /usr/local/etc/vscode-dev-containers/ \
+    && mv -f /tmp/scripts/first-run-notice.txt /usr/local/etc/vscode-dev-containers/
 
 # Install Python, PHP, Ruby utilities
 RUN bash /tmp/scripts/python-debian.sh "none" "/opt/python/latest" "${PIPX_HOME}" "${USERNAME}" "true" \
