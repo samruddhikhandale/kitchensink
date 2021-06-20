@@ -9,6 +9,8 @@
 #
 # Syntax: ./common-debian.sh [install zsh flag] [username] [user UID] [user GID] [upgrade packages flag] [install Oh My Zsh! flag] [Add non-free packages]
 
+set -e
+
 INSTALL_ZSH=${1:-"true"}
 USERNAME=${2:-"automatic"}
 USER_UID=${3:-"automatic"}
@@ -16,8 +18,7 @@ USER_GID=${4:-"automatic"}
 UPGRADE_PACKAGES=${5:-"true"}
 INSTALL_OH_MYS=${6:-"true"}
 ADD_NON_FREE_PACKAGES=${7:-"false"}
-
-set -e
+SCRIPT_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo -e 'Script must be run as root. Use sudo, su, or add "USER root" to your Dockerfile before running this script.'
@@ -207,6 +208,16 @@ else
     USER_RC_PATH="/home/${USERNAME}"
 fi
 
+# Restore user .bashrc defaults from skeleton file if it doesn't exist or is empty
+if [ ! -f "${USER_RC_PATH}/.bashrc" ] || [ ! -s "${USER_RC_PATH}/.bashrc" ] ; then
+    cp  /etc/skel/.bashrc "${USER_RC_PATH}/.bashrc"
+fi
+
+# Restore user .profile defaults from skeleton file if it doesn't exist or is empty
+if  [ ! -f "${USER_RC_PATH}/.profile" ] || [ ! -s "${USER_RC_PATH}/.profile" ] ; then
+    cp  /etc/skel/.profile "${USER_RC_PATH}/.profile"
+fi
+
 # .bashrc/.zshrc snippet
 RC_SNIPPET="$(cat << 'EOF'
 
@@ -287,12 +298,19 @@ __bash_prompt() {
     PS1="${userpart} ${lightblue}\w ${gitbranch}${removecolor}\$ "
     unset -f __bash_prompt
 }
-__bash_prompt
 
+# Set the default git editor
+if  [ "${TERM_PROGRAM}" = "vscode" ]; then
+    $GIT_EDITOR="vscode"
+fi
+
+__bash_prompt
 EOF
 )"
+
 CODESPACES_ZSH="$(cat \
 <<'EOF'
+# Codespaces zsh prompt theme
 __zsh_prompt() {
     local prompt_username
     if [ ! -z "${GITHUB_USER}" ]; then 
@@ -309,6 +327,12 @@ ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg_bold[cyan]%}(%{$fg_bold[red]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%} "
 ZSH_THEME_GIT_PROMPT_DIRTY=" %{$fg_bold[yellow]%}✗%{$fg_bold[cyan]%})"
 ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg_bold[cyan]%})"
+
+# Set the default git editor
+if  [ "${TERM_PROGRAM}" = "vscode" ]; then
+    $GIT_EDITOR="vscode"
+fi
+
 __zsh_prompt
 EOF
 )"
@@ -431,7 +455,6 @@ if [ ! -z "${CONTENTS_URL}" ]; then echo && echo "More info: ${CONTENTS_URL}"; f
 echo
 EOF
 )"
-SCRIPT_DIR="$(cd $(dirname $0) && pwd)"
 if [ -f "${SCRIPT_DIR}/meta.env" ]; then
     mkdir -p /usr/local/etc/vscode-dev-containers/
     cp -f "${SCRIPT_DIR}/meta.env" /usr/local/etc/vscode-dev-containers/meta.env
