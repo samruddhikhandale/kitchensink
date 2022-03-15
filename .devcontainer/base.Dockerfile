@@ -1,15 +1,17 @@
-#-------------------------------------------------------------------------------------------------------------
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
-#-------------------------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/oryx/build:vso-focal-20210514.2 as kitchensink
+FROM ubuntu:latest as kitchensink
+
+RUN groupadd -g 1000 codespace
+RUN useradd -u 1000 -g codespace codespace
+RUN chown -R codespace:codespace /home/codespace/
+RUN chown -R codespace:codespace /opt/
 
 ARG USERNAME=codespace
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # Default to bash shell (other shells available at /usr/bin/fish and /usr/bin/zsh)
-ENV SHELL=/bin/bash \
+ENV USERNAME=${USERNAME} \
+    SHELL=/bin/bash \
     ORYX_ENV_TYPE=vsonline-present \
     DOTNET_ROOT="/home/${USERNAME}/.dotnet" \ 
     NVM_SYMLINK_CURRENT=true \
@@ -87,10 +89,13 @@ RUN bash /tmp/scripts/node-debian.sh "${NVM_DIR}" "none" "${USERNAME}" \
     && rm -rf ${NVM_DIR}/.git ${NVS_HOME}/.git
 
 # Install SDKMAN, OpenJDK8 (JDK 11 already present), gradle (maven already present)
-RUN bash /tmp/scripts/gradle-debian.sh "latest" "${SDKMAN_DIR}" "${USERNAME}" "true" \
-    && su ${USERNAME} -c ". ${SDKMAN_DIR}/bin/sdkman-init.sh \
-        && sdk install java 11-opt-java /opt/java/11.0 \
-        && sdk install java lts-opt-java /opt/java/lts"
+# RUN bash /tmp/scripts/gradle-debian.sh "latest" "${SDKMAN_DIR}" "${USERNAME}" "true" \
+#     && su ${USERNAME} -c ". ${SDKMAN_DIR}/bin/sdkman-init.sh \
+#         && sdk install java 11-opt-java /opt/java/11.0 \
+#         && sdk install java lts-opt-java /opt/java/lts"
+
+# Testing java-debian.sh
+RUN bash /tmp/scripts/java-debian.sh
 
 # Install Rust, Go, remove scripts now that we're done with them
 RUN bash /tmp/scripts/rust-debian.sh "${CARGO_HOME}" "${RUSTUP_HOME}" "${USERNAME}" "true" \
